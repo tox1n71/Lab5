@@ -1,13 +1,17 @@
 package ru.itmo.lab5.server;
 
 
-
 import ru.itmo.lab5.worker.*;
 
+import java.io.FileWriter;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.regex.*;
+import java.io.*;
+import javax.xml.parsers.*;
+import org.w3c.dom.*;
+import org.xml.sax.*;
 
 
 public class CommandReader {
@@ -31,7 +35,6 @@ public class CommandReader {
         this.organizationReader = organizationReader;
         this.workerReader = workerReader;
     }
-
 
 
     public void readCommand() {
@@ -86,6 +89,20 @@ public class CommandReader {
                 commandHistory.push(input.trim());
             } else if (input.trim().equals("add_if_min")) {
                 addIfMin();
+                commandHistory.push(input.trim());
+            }else if (input.trim().equals("remove_by_lower")){
+                removeByLower();
+                commandHistory.push(input.trim());
+            }else if (input.matches("update_by_id \\d+")){
+                Pattern pattern = Pattern.compile("\\d+");
+                Matcher matcher = pattern.matcher(input);
+                if (matcher.find()) {
+                    int id = Integer.parseInt(matcher.group());
+                    updateById(id);
+                } else {
+                    System.out.println("Неверный формат команды");
+                }
+                commandHistory.push(input.trim());
             }
         }
     }
@@ -138,6 +155,9 @@ public class CommandReader {
     }
 
     private void removeById(int id) {
+        if (workers.isEmpty()){
+            System.out.println("Коллекция пуста");
+        }
         Iterator<Worker> iterator = workers.iterator();
         while (iterator.hasNext()) {
             Worker worker = iterator.next();
@@ -158,6 +178,8 @@ public class CommandReader {
         }
         return id;
     }
+
+
 
 
     private void filterLessThanOrganization() {
@@ -197,13 +219,15 @@ public class CommandReader {
             System.out.println("Работник с минимальным именем: \n" + minWorker);
         }
     }
-    private void printDescending(){
+
+    private void printDescending() {
         Iterator<Worker> descendingIterator = workers.descendingIterator();
         while (descendingIterator.hasNext()) {
             Worker worker = descendingIterator.next();
             System.out.println(worker);
+        }
     }
-}
+
     private void history() {
         System.out.println("История вводимых команд:");
         for (int i = commandHistory.size() - 1; i >= 0; i--) {
@@ -212,19 +236,63 @@ public class CommandReader {
         }
     }
 
-    private void addIfMin(){ // DOdelattttt 4-4ut
-        Worker mayBeAddedWorker = workerReader.readWorker();
-        try {
-            if (mayBeAddedWorker.compareTo(workers.first()) < 0){
+    private void addIfMin() { // DOdelattttt 4-4ut
+        if (workers.isEmpty()) {
+            System.err.println("Коллекция пуста, воспользуйтесь командой 'add'");
+        } else {
+            Worker mayBeAddedWorker = workerReader.readWorker();
+            if (mayBeAddedWorker.compareTo(workers.first()) < 0) {
                 mayBeAddedWorker.setId(getFreeId());
                 mayBeAddedWorker.setCreationDate(LocalDate.now());
                 workers.add(mayBeAddedWorker);
-            }
-            else System.out.println("\nВведенный элемент больше минимального");
-        }catch (NoSuchElementException e){
-            System.err.println("Коллекция пуста, воспользуйтесь командой 'add'");
+            } else System.out.println("Введенный элемент больше минимального");
+
         }
     }
 
+    private void removeByLower(){
+        if (workers.isEmpty()){
+            System.err.println("Коллекция пуста, нет элементов для сравнения");
+        }
+        else {
+            Iterator<Worker> iterator = workers.iterator();
+            Worker removeLowerThanThisWorker = workerReader.readWorker();
+            while (iterator.hasNext()){
+                Worker worker = iterator.next();
+                if (worker.compareTo(removeLowerThanThisWorker) < 0){
+                    iterator.remove();
+                    System.out.println("Удален элемент с id " + worker.getId());
+                }
+                else {
+                    System.out.println("Элементы меньше чем заданный не найдены");
+                }
+            }
+        }
+    }
+
+    private void updateById(int id){
+        if (workers.isEmpty()){
+            System.out.println("Коллекция пуста");
+        }
+        Iterator<Worker> iterator = workers.iterator();
+        Worker returnmentWorker;
+        while(iterator.hasNext()){
+            Worker worker = iterator.next();
+            if (worker.getId() == id){
+                returnmentWorker = workerReader.readWorker();
+                returnmentWorker.setId(worker.getId());
+                returnmentWorker.setCreationDate(worker.getCreationDate());
+                iterator.remove();
+                workers.add(returnmentWorker);
+            }
+            else {
+                System.out.println("Работник с таким id не найден");
+            }
+        }
+    }
+
+
 }
+
+
 

@@ -55,6 +55,6 @@ public class Address {
         return
                 "\n\t\t\t<street>" + street + "</street>"+
                 "\n\t\t\t<zipCode>" + zipCode + "</zipCode>"+
-                "\n\t\t\t<town>" + town + "\n\t\t\t</town>"+ '\n';
+                "\n\t\t\t<town>" + town.toXml() + "\n\t\t\t</town>"+ '\n';
     }
 }

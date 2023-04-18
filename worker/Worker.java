@@ -150,13 +150,13 @@ public class Worker implements Comparable<Worker>{
         return "<Worker>" +
                 "\n\t<id>" + id + "</id>"+
                 "\n\t<name>" + name + "</name>"+
-                "\n\t<coordinates>" + coordinates + "</coordinates>\t"+
+                "\n\t<coordinates>" + coordinates.toXml() + "</coordinates>\t"+
                 "\n\t<creationDate>" + creationDate + "</creationDate>"+
                 "\n\t<salary>" + salary + "</salary>"+
                 "\n\t<startDate>" + startDate + "</startDate>"+
                 "\n\t<endDate>" + endDate + "</endDate>"+
                 "\n\t<position>" + position + "</position>"+
-                "\n\t<organization>" + organization + "</organization>\n" +
+                "\n\t<organization>" + organization.toXml() + "</organization>\n" +
                 "</Worker>";
     }
 }

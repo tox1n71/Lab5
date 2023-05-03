@@ -58,7 +58,7 @@ public class Location {
                 "\n\t\t\t\t\t x=" + x +
                 ",\n\t\t\t\t\t y=" + y +
                 ",\n\t\t\t\t\t z=" + z +
-                ",\n\t\t\t\t\t name='" + name + '\'' +
+                ",\n\t\t\t\t\t name=" + name  +
                 '}';
     }
     public String toXml() {

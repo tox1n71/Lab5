@@ -71,7 +71,7 @@ public class Organization implements Comparable<Organization>{
                 "\n\t\t<fullName>" + fullName + "</fullName>"+
                 "\n\t\t<annualTurnover>" + annualTurnover + "</annualTurnover>"+
                 "\n\t\t<employeesCount>" + employeesCount + "</employeesCount>"+
-                "\n\t\t<postalAdress>" + postalAddress.toXml() + "\t\t</postalAdress>" +'\n'+
+                "\n\t\t<postalAddress>" + postalAddress.toXml() + "\t\t</postalAddress>" +'\n'+
                 "\t</Organization>";
     }
 

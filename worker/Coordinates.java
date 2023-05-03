@@ -9,6 +9,10 @@ public class Coordinates {
     private Double y; //Поле не может быть null
 
     public Coordinates(){}
+    public Coordinates(double x, double y){
+        this.x = x;
+        this.y =y;
+    }
 
 
     public double getX() {
@@ -37,7 +41,7 @@ public class Coordinates {
     public String toXml() {
         return "<Coordinates>" +
                 "\n\t\t<x>" + x + "</x>"+
-                "\n\t\t<y>" + y + "</x>"  + '\n'+
+                "\n\t\t<y>" + y + "</y>"  + '\n'+
                 "\t</Coordinates>";
     }
 }

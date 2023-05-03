@@ -1,22 +1,25 @@
 package ru.itmo.lab5.worker;
 
-import ru.itmo.lab5.exceptions.InputException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
+import static ru.itmo.lab5.server.WorkerReader.formatter;
+import static ru.itmo.lab5.server.WorkerReader.formatterTime;
+
 public class Worker implements Comparable<Worker>{
     private int id; //Значение поля должно быть больше 0, Значение этого поля должно быть уникальным, Значение этого поля должно генерироваться автоматически
     private String name; //Поле не может быть null, Строка не может быть пустой
     private Coordinates coordinates; //Поле не может быть null
-    private java.time.LocalDate creationDate; //Поле не может быть null, Значение этого поля должно генерироваться автоматически
+    private java.time.LocalDate creationDate;//Поле не может быть null, Значение этого поля должно генерироваться автоматически
 
     private Integer salary; //Поле не может быть null, Значение поля должно быть больше 0
     private java.time.LocalDate startDate; //Поле не может быть null
     private java.time.LocalDateTime endDate; //Поле может быть null
     private Position position; //Поле не может быть null
     private Organization organization; //Поле может быть null
+
 
     public Worker(){}
 
@@ -133,31 +136,62 @@ public class Worker implements Comparable<Worker>{
 
     @Override
     public String toString() {
-        return "Worker{" +
-                "\n\t id=" + id +
-                ",\n\t name=" + name  +
-                ",\n\t coordinates=" + coordinates +
-                ",\n\t creationDate=" + creationDate +
-                ",\n\t salary=" + salary +
-                ",\n\t startDate=" + startDate +
-                ",\n\t endDate=" + endDate +
-                ",\n\t position=" + position +
-                ",\n\t organization=" + organization +
-                "\n\t}\n";
+        if (getEndDate() == null){
+            return "Worker{" +
+                    "\n\t id=" + id +
+                    ",\n\t name=" + name  +
+                    ",\n\t coordinates=" + coordinates +
+                    ",\n\t creationDate=" + creationDate.format(formatter) +
+                    ",\n\t salary=" + salary +
+                    ",\n\t startDate=" + startDate.format(formatter) +
+                    ",\n\t endDate=" + endDate +
+                    ",\n\t position=" + position +
+                    ",\n\t organization=" + organization +
+                    "\n\t}\n";
+        }
+        else {
+            return "Worker{" +
+                    "\n\t id=" + id +
+                    ",\n\t name=" + name  +
+                    ",\n\t coordinates=" + coordinates +
+                    ",\n\t creationDate=" + creationDate.format(formatter) +
+                    ",\n\t salary=" + salary +
+                    ",\n\t startDate=" + startDate.format(formatter) +
+                    ",\n\t endDate=" + endDate.format(formatterTime) +
+                    ",\n\t position=" + position +
+                    ",\n\t organization=" + organization +
+                    "\n\t}\n";
+        }
     }
 
     public String toXml() {
-        return "<Worker>" +
-                "\n\t<id>" + id + "</id>"+
-                "\n\t<name>" + name + "</name>"+
-                "\n\t<coordinates>" + coordinates.toXml() + "</coordinates>\t"+
-                "\n\t<creationDate>" + creationDate + "</creationDate>"+
-                "\n\t<salary>" + salary + "</salary>"+
-                "\n\t<startDate>" + startDate + "</startDate>"+
-                "\n\t<endDate>" + endDate + "</endDate>"+
-                "\n\t<position>" + position + "</position>"+
-                "\n\t<organization>" + organization.toXml() + "</organization>\n" +
-                "</Worker>";
+        if (getEndDate() == null){
+            return "<Worker>" +
+                    "\n\t<id>" + id + "</id>"+
+                    "\n\t<name>" + name + "</name>"+
+                    "\n\t<coordinates>" + coordinates.toXml() + "</coordinates>\t"+
+                    "\n\t<creationDate>" + creationDate.format(formatter) + "</creationDate>"+
+                    "\n\t<salary>" + salary + "</salary>"+
+                    "\n\t<startDate>" + startDate.format(formatter) + "</startDate>"+
+                    "\n\t<endDate>" + endDate + "</endDate>"+
+                    "\n\t<position>" + position + "</position>"+
+                    "\n\t<organization>" + organization.toXml() + "</organization>\n" +
+                    "</Worker>\n";
+        }
+        else {
+            return "<Worker>" +
+                    "\n\t<id>" + id + "</id>"+
+                    "\n\t<name>" + name + "</name>"+
+                    "\n\t<coordinates>" + coordinates.toXml() + "</coordinates>\t"+
+                    "\n\t<creationDate>" + creationDate.format(formatter) + "</creationDate>"+
+                    "\n\t<salary>" + salary + "</salary>"+
+                    "\n\t<startDate>" + startDate.format(formatter) + "</startDate>"+
+                    "\n\t<endDate>" + endDate.format(formatterTime) + "</endDate>"+
+                    "\n\t<position>" + position + "</position>"+
+                    "\n\t<organization>" + organization.toXml() + "</organization>\n" +
+                    "</Worker>\n";
+        }
+
     }
 }
 

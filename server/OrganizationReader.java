@@ -196,7 +196,7 @@ public class OrganizationReader {
     }
 
 
-    private boolean checkOrgFullName(String fullName) throws UniqueException {
+    protected boolean checkOrgFullName(String fullName) throws UniqueException {
         for (String takenName : organizationsFullNames) {
             if (fullName.equals(takenName)) {
                 throw new UniqueException("Это название уже занято.");

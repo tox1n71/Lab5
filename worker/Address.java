@@ -5,8 +5,6 @@ import ru.itmo.lab5.exceptions.InputException;
 public class Address {
     private String street; //Строка не может быть пустой, Поле может быть null
 
-
-
     private String zipCode; //Длина строки должна быть не меньше 4, Поле не может быть null
     private Location town; //Поле не может быть null
 

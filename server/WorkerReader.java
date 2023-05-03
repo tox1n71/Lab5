@@ -14,8 +14,8 @@ import static ru.itmo.lab5.worker.Position.stringToPosition;
 public class WorkerReader {
 
 
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    DateTimeFormatter formatterTime = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    public static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    public static DateTimeFormatter formatterTime = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     OrganizationReader organizationReader;
     public WorkerReader(OrganizationReader organizationReader){
         this.organizationReader = organizationReader;

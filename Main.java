@@ -1,60 +1,60 @@
 package ru.itmo.lab5;
 
+
+import org.xml.sax.SAXException;
+
+import ru.itmo.lab5.exceptions.InputException;
+import ru.itmo.lab5.exceptions.ParserExeption;
 import ru.itmo.lab5.server.CommandReader;
 import ru.itmo.lab5.server.OrganizationReader;
 import ru.itmo.lab5.server.WorkerReader;
-import ru.itmo.lab5.worker.*;
+import ru.itmo.lab5.worker.Worker;
 
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
-import java.time.LocalDate;
-import java.util.Iterator;
 import java.util.TreeSet;
 
-class Main{
+import static ru.itmo.lab5.server.XMLReader.parseXML;
 
-    public static void main(String [] args) throws IOException{
 
-//        OrganizationReader organizationReader = new OrganizationReader();
-//        WorkerReader workerReader = new WorkerReader(organizationReader);
-//        CommandReader commandReader = new CommandReader(organizationReader, workerReader);
-//        commandReader.readCommand();
+class Main {
 
-        Worker worker = new Worker();
-        worker.setId(123123123);
-        worker.setName("Ivan");
-        worker.setCreationDate(LocalDate.now());
-        worker.setPosition(Position.LEAD_DEVELOPER);
-        worker.setSalary(15000);
-        Coordinates coordinates = new Coordinates();
-        coordinates.setX(1);
-        coordinates.setY(Double.parseDouble("91"));
-        Organization org = new Organization();
-        Address address = new Address();
-        Location loc = new Location();
-        loc.setName("Los-Angeles");
-        loc.setX(15);
-        loc.setY(Long.parseLong("9158"));
-        loc.setZ(Integer.parseInt("-19"));
-        address.setZipCode("19875L");
-        address.setStreet("84 Avylane Street");
-        address.setTown(loc);
-        org.setFullName("Apple Inc");
-        org.setAnnualTurnover(Float.parseFloat("2000.98"));
-        org.setEmployeesCount(400);
-        org.setPostalAddress(address);
-        worker.setCoordinates(coordinates);
-        worker.setOrganization(org);
-        String workerXML = worker.toXml();
+    public static void main(String[] args) {
+        final String EnvironmentalVariable = "MY_FILE";
+        String fileName = System.getenv(EnvironmentalVariable);
+        if (fileName == null) {
+            System.err.println("Переменная окружения не найдена. Установите переменную окружения и повторите попытку");
+        } else {
+            try {
+                File file = new File(fileName);
+                if (!file.canRead()){
+                    System.err.println("Ваш файл закрыт для чтения. Измените права доступа или выберите другой файл");
+                } else if (!file.canWrite()) {
+                    System.err.println("Ваш файл закрыт для записи. Измените права доступа или выберите другой файл");
+                }
+                else {
+                OrganizationReader organizationReader = new OrganizationReader();
+                WorkerReader workerReader = new WorkerReader(organizationReader);
+                if (file.length() == 0) {
+                    TreeSet<Worker> workers = new TreeSet<>();
+                    CommandReader commandReader = new CommandReader(organizationReader, workerReader, file, workers);
+                    commandReader.readCommand();
+                } else {
 
-        try {
-            FileWriter fWriter = new FileWriter("LolKekMambet.txt");
-            fWriter.write(workerXML);
-            fWriter.close();
-        }
-        catch ( IOException e ) {
-            e.printStackTrace();
+                    TreeSet<Worker> workers = parseXML(file, organizationReader);
+                    CommandReader commandReader = new CommandReader(organizationReader, workerReader, file, workers);
+                    commandReader.readCommand();
+                }}
+
+            } catch (FileNotFoundException e) {
+                System.err.println("Файл заданный переменной окружения не найден. Добавьте файл или проверьте переменную окружения и повторите попытку");
+            } catch (ParserConfigurationException | SAXException e) {
+                System.err.println("Файл не валидный. Необходимо выбрать другой файл.");
+            } catch (IOException e) {
+                System.err.println(e.getMessage());
+            }
+
         }
     }
 }
-
 

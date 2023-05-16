@@ -1,11 +1,14 @@
 package ru.itmo.lab5.server;
 
-
 import org.apache.commons.lang3.RandomStringUtils;
+import ru.itmo.lab5.commands.Command;
+import ru.itmo.lab5.commands.HelpCommand;
+import ru.itmo.lab5.commands.ShowCommand;
 import ru.itmo.lab5.exceptions.InputException;
-import ru.itmo.lab5.exceptions.ParserExeption;
 import ru.itmo.lab5.exceptions.UniqueException;
 import ru.itmo.lab5.exceptions.WrongScriptDataException;
+import ru.itmo.lab5.readers.OrganizationReader;
+import ru.itmo.lab5.readers.WorkerReader;
 import ru.itmo.lab5.worker.*;
 
 import java.io.FileWriter;
@@ -20,22 +23,39 @@ import javax.xml.parsers.*;
 
 import org.xml.sax.*;
 
-import static ru.itmo.lab5.server.WorkerReader.formatter;
-import static ru.itmo.lab5.server.WorkerReader.formatterTime;
+import static ru.itmo.lab5.readers.WorkerReader.formatter;
+import static ru.itmo.lab5.readers.WorkerReader.formatterTime;
 
 
-public class CommandReader {
+public class CollectionManager {
     Scanner scanner = new Scanner(System.in);
     boolean isProgramActive = true;
 
 
     File fileName;
-    TreeSet<Worker> workers;
+    TreeSet<Worker> workers = new TreeSet<>();
     HashSet<Integer> workersIds = new HashSet<>();
     HashSet<String> executedScripts = new HashSet<>();
     Stack<String> commandHistory = new Stack<>();
-    OrganizationReader organizationReader;
+    OrganizationReader organizationReader = new OrganizationReader();
     WorkerReader workerReader;
+    HashSet<String> commands = new HashSet<>();
+
+    {
+        commands.add("help");
+        commands.add("show");
+        commands.add("add");
+        commands.add("info");
+        commands.add("history");
+        commands.add("print_descending");
+        commands.add("clear");
+        commands.add("filter_less_than_organization");
+        commands.add("remove_lower");
+        commands.add("min_by_name");
+        commands.add("remove_by_id");
+        commands.add("add_if_min");
+        commands.add("update_by_id");
+    }
 
 
     ZonedDateTime zonedDateTime;
@@ -44,140 +64,38 @@ public class CommandReader {
         zonedDateTime = ZonedDateTime.now();
     }
 
-    public CommandReader(OrganizationReader organizationReader, WorkerReader workerReader, File fileName, TreeSet<Worker> workers) throws ParserConfigurationException, IOException, SAXException {
-        this.organizationReader = organizationReader;
-        this.workerReader = workerReader;
+    public CollectionManager(File fileName, TreeSet<Worker> workers) throws ParserConfigurationException, IOException, SAXException {
         this.fileName = fileName;
         this.workers = workers;
-
     }
 
+    public CollectionManager() {
+    }
 
-    public void readCommand() throws IOException {
-        setUsedIdsAndOrgNames();
-        while (isProgramActive) {
-            System.out.print(">> ");
-            try {
-                String input = scanner.nextLine();
-                // commandHistory.push(input.trim()); // Добавляем команду в стек
-                if (commandHistory.size() > 8) {
-                    commandHistory.remove(0); // Ограничиваем размер стека 8 элементами
-                }
-
-                switch (input.trim()) {
-                    case "help" -> {
-                        help();
-                        commandHistory.push(input.trim());
-                    }
-                    case "info" -> {
-                        info();
-                        commandHistory.push(input.trim());
-                    }
-                    case "show" -> {
-                        show();
-                        commandHistory.push(input.trim());
-                    }
-                    case "exit" -> {
-                        exit();
-                        commandHistory.push(input.trim());
-                    }
-                    case "add" -> {
-                        add();
-                        commandHistory.push(input.trim());
-                    }
-                    case "filter_less_than_organization" -> {
-                        filterLessThanOrganization();
-                        commandHistory.push(input.trim());
-                    }
-                    case "clear" -> {
-                        clear();
-                        commandHistory.push(input.trim());
-                    }
-                    case "min_by_name" -> {
-                        minByName();
-                        commandHistory.push(input.trim());
-                    }
-                    case "print_descending" -> {
-                        printDescending();
-                        commandHistory.push(input.trim());
-                    }
-                    case "history" -> {
-                        history();
-                        commandHistory.push(input.trim());
-                    }
-                    case "add_if_min" -> {
-                        addIfMin();
-                        commandHistory.push(input.trim());
-                    }
-                    case "remove_lower" -> {
-                        removeLower();
-                        commandHistory.push(input.trim());
-                    }
-                    case "save" -> {
-                        try {
-                            save();
-                        } catch (Exception e) {
-                            System.err.println(e.getMessage());
-                        }
-                    }
-                    default -> {
-                        if (input.matches("remove_by_id \\d+")) {
-                            Pattern pattern = Pattern.compile("\\d+");
-                            Matcher matcher = pattern.matcher(input);
-                            if (matcher.find()) {
-                                int id = Integer.parseInt(matcher.group());
-                                removeById(id);
-                            } else {
-                                System.out.println("Неверный формат команды");
-                            }
-                            commandHistory.push(input.trim());
-                        } else if (input.matches("update_by_id \\d+")) {
-                            Pattern pattern = Pattern.compile("\\d+");
-                            Matcher matcher = pattern.matcher(input);
-                            if (matcher.find()) {
-                                int id = Integer.parseInt(matcher.group());
-                                updateById(id);
-                            } else {
-                                System.out.println("Неверный формат команды");
-                            }
-                            commandHistory.push(input.trim());
-                        } else if (input.matches("execute_script \\S*")) {
-                            String[] tokens = input.split(" ");
-                            if (tokens.length == 2) {
-                                String scriptFileName = tokens[1];
-                                executedScripts.add(scriptFileName);
-                                try {
-                                    executeScript(scriptFileName);
-                                    executedScripts.remove(scriptFileName);
-                                } catch (FileNotFoundException e) {
-                                    System.err.println("Файл со скриптом не найден");
-                                }
-                            } else {
-                                System.out.println("Неверный формат команды");
-                            }
-                            commandHistory.push(input.trim());
-                        } else {
-                            System.out.println("Команда или ее параметр введен(-а) неверно");
-                        }
-                    }
-                }
-            } catch (NoSuchElementException e) {
-                isProgramActive = false;
-                System.err.println("Программа была прервана сочетанием клавиш cntl+d");
+    public String executeCommand(Command command) {
+        if (commandHistory.size() > 7) {
+            commandHistory.remove(0);
+        }
+        Iterator<String> iterator = commands.iterator();
+        while (iterator.hasNext()) {
+            String myCommand = iterator.next();
+            if (command.getName().equals(myCommand)) {
+                commandHistory.push(command.getName());
+                return command.execute();
             }
         }
+        return "Команда не найдена";
     }
 
 
-    private void help() {
-        System.out.println("help : вывести справку по доступным командам\n" +
+    public String help() {
+        return "help : вывести справку по доступным командам\n" +
                 "info : вывести в стандартный поток вывода информацию о коллекции (тип, дата инициализации, количество элементов и т.д.)\n" +
                 "show : вывести в стандартный поток вывода все элементы коллекции в строковом представлении\n" +
                 "add {element} : добавить новый элемент в коллекцию\n" +
-                "update id {element} : обновить значение элемента коллекции, id которого равен заданному\n" +
+                "update_by_id id {element} : обновить значение элемента коллекции, id которого равен заданному\n" +
                 "remove_by_id id : удалить элемент из коллекции по его id\n" +
                 "clear : очистить коллекцию\n" +
-                "save : сохранить коллекцию в файл\n" +
                 "execute_script file_name : считать и исполнить скрипт из указанного файла. В скрипте содержатся команды в таком же виде, в котором их вводит пользователь в интерактивном режиме.\n" +
                 "exit : завершить программу (без сохранения в файл)\n" +
                 "add_if_min {element} : добавить новый элемент в коллекцию, если его значение меньше, чем у наименьшего элемента этой коллекции\n" +
@@ -185,17 +103,17 @@ public class CommandReader {
                 "history : вывести последние 8 команд (без их аргументов)\n" +
                 "min_by_name : вывести любой объект из коллекции, значение поля name которого является минимальным\n" +
                 "filter_less_than_organization organization : вывести элементы, значение поля organization которых меньше заданного\n" +
-                "print_descending : вывести элементы коллекции в порядке убывания");
+                "print_descending : вывести элементы коллекции в порядке убывания";
     }
 
-    private void info() {
-        System.out.println("Тип коллекции: " + workers.getClass().getSimpleName()
+    public String info() {
+        return ("Тип коллекции: " + workers.getClass().getSimpleName()
                 + "\nКоличество элементов в коллекции: " + workers.size()
                 + "\nДата инициализации: " + zonedDateTime);
     }
 
-    private void show() {
-        System.out.println(workers);
+    public String show() {
+        return workers.toString();
     }
 
     private void exit() {
@@ -203,49 +121,51 @@ public class CommandReader {
         System.out.println("Завершение программы...");
     }
 
-    private void add() {
-        Worker worker = workerReader.readWorker();
+    public String add(Worker worker) {
         worker.setId(getFreeId());
         worker.setCreationDate(LocalDate.now());
         workers.add(worker);
-        System.out.println("Введенный элемент добавлен в коллекцию с id" + worker.getId());
+        return ("Введенный элемент добавлен в коллекцию с id" + worker.getId());
     }
 
-    private void clear() {
+    public String clear() {
         Iterator<Worker> iterator = workers.iterator();
         while (iterator.hasNext()) {
             Worker worker = iterator.next();
             workersIds.remove(worker.getId());
-            organizationReader.organizationsFullNames.remove(worker.getOrganization().getFullName());
+//            organizationReader.organizationsFullNames.remove(worker.getOrganization().getFullName());
         }
         workers.clear();
-        System.out.println("Коллекция очищена");
+        return ("Коллекция очищена");
     }
 
-    private void removeById(int id) {
+    public String removeById(int id) {
         boolean found = false;
+        String res = "";
         if (workers.isEmpty()) {
-            System.out.println("Коллекция пуста");
+            return ("Коллекция пуста");
         } else {
             Iterator<Worker> iterator = workers.iterator();
             while (iterator.hasNext()) {
                 Worker worker = iterator.next();
                 if (worker.getId() == id) {
-                    organizationReader.removeOrgNameFromList(worker.getOrganization().getFullName());
                     iterator.remove();
-                    System.out.println("Элемент с id " + id + " удален из коллекции");
+                    workersIds.remove(worker.getId());
+                    organizationReader.removeOrgNameFromList(worker.getOrganization().getFullName());
+                    res = "Элемент с id " + id + " удален из коллекции";
                     found = true;
                     break;
                 }
             }
             if (!found) {
-                System.out.println("Элемент с id " + id + " не найден в коллекции");
+                res = ("Элемент с id " + id + " не найден в коллекции");
             }
         }
+        return res;
     }
 
 
-    private int getFreeId() {
+    public int getFreeId() {
         Integer id = 1 + (int) (Math.random() * Integer.MAX_VALUE);
         while (workersIds.contains(id)) {
             id = 1 + (int) (Math.random() * Integer.MAX_VALUE);
@@ -254,27 +174,27 @@ public class CommandReader {
     }
 
 
-    private void filterLessThanOrganization() {
-        Organization inputOrganization = organizationReader.readOrganization();
+    public String filterLessThanOrganization(Organization inputOrganization) {
+        String res = " ";
         for (Worker worker : workers) {
             if (inputOrganization.getAnnualTurnover() == null) {
-                System.err.println("Сравнить с null значением не получится");
+                res = ("Сравнить с null значением не получится");
                 break;
             }
             if (!(worker.getOrganization().getAnnualTurnover() == null)) {
                 if (worker.getOrganization().compareTo(inputOrganization) < 0) {
-                    System.out.println(worker);
+                    res += (worker);
                 } else {
-                    System.out.println("Работников с меньшей организацией нет");
+                    res = ("Работников с меньшей организацией нет");
                 }
             }
         }
+        return res;
     }
 
-    private void minByName() {
+    public String minByName() {
         if (workers.isEmpty()) {
-            System.out.println("Список работников пуст.");
-            return;
+            return ("Список работников пуст.");
         }
         Worker minWorker = null;
         Iterator<Worker> iterator = workers.iterator();
@@ -286,91 +206,98 @@ public class CommandReader {
         }
 
         if (minWorker == null) {
-            System.out.println("Не удалось найти работника с минимальным именем.");
+            return ("Не удалось найти работника с минимальным именем.");
         } else {
-            System.out.println("Работник с минимальным именем: \n" + minWorker);
+            return ("Работник с минимальным именем: \n" + minWorker);
         }
     }
 
-    private void printDescending() {
+    public String printDescending() {
+        String res = "";
         Iterator<Worker> descendingIterator = workers.descendingIterator();
         while (descendingIterator.hasNext()) {
             Worker worker = descendingIterator.next();
-            System.out.println(worker);
+            res += worker + "\n";
         }
+        return res;
     }
 
-    private void history() {
-        System.out.println("История вводимых команд:");
+    public String history() {
+        String res = "";
+        res += ("История вводимых команд:\n");
         for (int i = commandHistory.size() - 1; i >= 0; i--) {
             String command = commandHistory.get(i);
-            System.out.println(command.split(" ")[0]);
+            res += (command.split(" ")[0]) + "\n";
         }
+        return res;
     }
 
-    private void addIfMin() {
+    public String addIfMin(Worker mayBeAddedWorker) {
         boolean added = false;
+        String res = "";
         if (workers.isEmpty()) {
-            System.err.println("Коллекция пуста, воспользуйтесь командой 'add'");
+            res = ("Коллекция пуста, воспользуйтесь командой 'add'");
         } else {
-            Worker mayBeAddedWorker = workerReader.readWorker();
             if (mayBeAddedWorker.compareTo(workers.first()) < 0) {
                 mayBeAddedWorker.setId(getFreeId());
                 mayBeAddedWorker.setCreationDate(LocalDate.now());
                 workers.add(mayBeAddedWorker);
                 added = true;
-                System.out.println("Введенный элемент меньше и добавлен в коллекцию с id " + mayBeAddedWorker.getId());
+                res = ("Введенный элемент меньше и добавлен в коллекцию с id " + mayBeAddedWorker.getId());
             }
             if (!added) {
-                System.out.println("Введенный элемент больше минимального");
+                res = ("Введенный элемент больше минимального");
             }
         }
+        return res;
     }
 
-    private void removeLower() {
+    public String removeLower(Worker removeLowerThanThisWorker) {
         boolean removed = false;
+        String res = "";
         if (workers.isEmpty()) {
             System.err.println("Коллекция пуста, нет элементов для сравнения");
         } else {
             Iterator<Worker> iterator = workers.iterator();
-            Worker removeLowerThanThisWorker = workerReader.readWorker();
             while (iterator.hasNext()) {
                 Worker worker = iterator.next();
                 if (worker.compareTo(removeLowerThanThisWorker) < 0) {
                     iterator.remove();
-                    System.out.println("Удален элемент с id " + worker.getId());
+                    res += ("Удален элемент с id " + worker.getId() + "\n");
                     removed = true;
                 }
             }
             if (!removed) {
-                System.out.println("Элементы меньше чем заданный не найдены");
+                res = ("Элементы меньше чем заданный не найдены");
             }
         }
+        return res;
     }
 
-    private void updateById(int id) {
-        boolean updated = false;
-        if (workers.isEmpty()) {
-            System.out.println("Коллекция пуста");
-        } else {
-            Iterator<Worker> iterator = workers.iterator();
-            Worker returnmentWorker;
-            while (iterator.hasNext()) {
-                Worker worker = iterator.next();
-                if (worker.getId() == id) {
-                    returnmentWorker = workerReader.readWorker();
-                    returnmentWorker.setId(worker.getId());
-                    returnmentWorker.setCreationDate(worker.getCreationDate());
-                    iterator.remove();
-                    workers.add(returnmentWorker);
-                    updated = true;
-                    break;
-                }
-            }
-            if (!updated) {
-                System.out.println("Работник с таким id не найден");
+    public String updateById(int id, Worker returnmentWorker) {
+        Iterator<Worker> iterator = workers.iterator();
+        while (iterator.hasNext()) {
+            Worker worker = iterator.next();
+            if (worker.getId() == id) {
+                organizationReader.removeOrgNameFromList(worker.getOrganization().getFullName());
+                returnmentWorker.setId(worker.getId());
+                returnmentWorker.setCreationDate(worker.getCreationDate());
+                organizationReader.organizationsFullNames.add(returnmentWorker.getOrganization().getFullName());
+                iterator.remove();
+                workers.add(returnmentWorker);
             }
         }
+        return "Данные работника были обновлены";
+    }
+
+    public boolean workerWithIdExist(int id) {
+        boolean exist = false;
+        Iterator<Worker> iterator = workers.iterator();
+        while (iterator.hasNext()) {
+            Worker worker = iterator.next();
+            exist = worker.getId() == id;
+        }
+        return exist;
     }
 
     private void save() throws IOException {
@@ -404,9 +331,10 @@ public class CommandReader {
                     try {
                         Worker worker = readWorkerFromFile(reader);
 
-                    workers.add(worker);
-                    System.out.println("Введенный элемент добавлен в коллекцию с id" + worker.getId());
-                    setUsedIdsAndOrgNames();}catch (WrongScriptDataException e){
+                        workers.add(worker);
+                        System.out.println("Введенный элемент добавлен в коллекцию с id" + worker.getId());
+                        setUsedIdsAndOrgNames();
+                    } catch (WrongScriptDataException e) {
                         System.err.println(e.getMessage());
                     }
                 }
@@ -433,7 +361,7 @@ public class CommandReader {
                         } catch (NoSuchElementException e) {
                             System.err.println("Команда add_if_min из скрипта не может быть выполнена, так как коллекция пуста.\n Добавьте элемент командой add");
                         }
-                    }catch (WrongScriptDataException e){
+                    } catch (WrongScriptDataException e) {
                         System.err.println(e.getMessage());
                     }
                     if (!added) {
@@ -446,21 +374,22 @@ public class CommandReader {
                     try {
                         Worker removeLowerThanThisWorker = readWorkerFromFile(reader);
 
-                    while (iterator.hasNext()) {
-                        Worker worker = iterator.next();
-                        try {
-                            if (worker.compareTo(removeLowerThanThisWorker) < 0) {
-                                iterator.remove();
-                                System.out.println("Удален элемент с id " + worker.getId());
-                                removed = true;
+                        while (iterator.hasNext()) {
+                            Worker worker = iterator.next();
+                            try {
+                                if (worker.compareTo(removeLowerThanThisWorker) < 0) {
+                                    iterator.remove();
+                                    System.out.println("Удален элемент с id " + worker.getId());
+                                    removed = true;
+                                }
+                            } catch (NoSuchElementException e) {
+                                System.err.println("Команда remove_lower из скрипта не может быть выполнена, так как коллекция пуста.\n Добавьте элемент командой add");
                             }
-                        } catch (NoSuchElementException e) {
-                            System.err.println("Команда remove_lower из скрипта не может быть выполнена, так как коллекция пуста.\n Добавьте элемент командой add");
+                            if (!removed) {
+                                System.out.println("Элементы меньше чем заданный не найдены");
+                            }
                         }
-                        if (!removed) {
-                            System.out.println("Элементы меньше чем заданный не найдены");
-                        }
-                    }}catch (WrongScriptDataException e){
+                    } catch (WrongScriptDataException e) {
                         System.err.println(e.getMessage());
                     }
                 }
@@ -470,7 +399,7 @@ public class CommandReader {
                         Matcher matcher = pattern.matcher(line);
                         if (matcher.find()) {
                             int id = Integer.parseInt(matcher.group());
-                            removeById(id);
+//                            removeById(id);
                         } else {
                             System.out.println("Неверный формат команды");
                         }
@@ -479,7 +408,7 @@ public class CommandReader {
                         Matcher matcher = pattern.matcher(line);
                         if (matcher.find()) {
                             int id = Integer.parseInt(matcher.group());
-                            updateById(id);
+//                            updateById(id);
                         } else {
                             System.out.println("Неверный формат команды");
                         }
@@ -652,6 +581,14 @@ public class CommandReader {
             else
                 throw new WrongScriptDataException("Данные в скрипте введены не верны. Измените скрипт и повторите попытку позже");
         }
+    }
+
+    public void setOrganizationReader(OrganizationReader organizationReader) {
+        this.organizationReader = organizationReader;
+    }
+
+    public TreeSet<Worker> getWorkers() {
+        return workers;
     }
 }
 

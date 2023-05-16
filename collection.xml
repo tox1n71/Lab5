@@ -1,0 +1,33 @@
+
+<Workers>
+    <Worker>
+        <id>123123123</id>
+        <name>Ivan</name>
+        <coordinates><Coordinates>
+            <x>1.0</x>
+            <y>91.0</y>
+        </Coordinates></coordinates>
+        <creationDate>2023-04-18</creationDate>
+        <salary>15000</salary>
+        <startDate>null</startDate>
+        <endDate>null</endDate>
+        <position>LEAD_DEVELOPER</position>
+        <organization><Organization>
+            <fullName>Apple Inc</fullName>
+            <annualTurnover>2000.98</annualTurnover>
+            <employeesCount>400</employeesCount>
+            <postalAdress>
+                <street>84 Avylane Street</street>
+                <zipCode>19875L</zipCode>
+                <town>
+                    <Location>
+                        <x>15</x>
+                        <y>9158</y>
+                        <z>-19</z>
+                        <name>'Los-Angeles'</name>
+                    </Location>
+                </town>
+            </postalAdress>
+        </Organization></organization>
+    </Worker>
+</Workers>

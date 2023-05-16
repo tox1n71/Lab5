@@ -1,8 +1,9 @@
 package ru.itmo.lab5.worker;
 
 
+import java.io.Serializable;
 
-public class Coordinates {
+public class Coordinates implements Serializable {
 
 
     private double x;

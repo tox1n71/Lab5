@@ -11,7 +11,21 @@ a.compareTo(b) = 0.
 
 
 
-update id {element} : обновить значение элемента коллекции, id которого равен заданному
 save : сохранить коллекцию в файл
 execute_script file_name : считать и исполнить скрипт из указанного файла. В скрипте содержатся команды в таком же виде, в котором их вводит пользователь в интерактивном режиме.
+
+/Users/ivan/IdeaProjects/Lab5/whore.xml
+
+
+1) Валидация с парсером ready
+2) cntl+d ready
+3) пустой файл обработка notFULL
+4) execute_script Script
+Scipt:
+   execute_script a
+a:
+   execute_script b
+b:
+   execute_script Script
+5) chmod обработка если запрещено чтение, если запрещена запись
 

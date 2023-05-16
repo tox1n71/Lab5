@@ -2,7 +2,9 @@ package ru.itmo.lab5.worker;
 
 import ru.itmo.lab5.exceptions.InputException;
 
-public class Organization implements Comparable<Organization>{
+import java.io.Serializable;
+
+public class Organization implements Comparable<Organization>, Serializable {
 
 
     private String fullName; //Строка не может быть пустой, Значение этого поля должно быть уникальным, Поле может быть null

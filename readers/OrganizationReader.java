@@ -1,4 +1,4 @@
-package ru.itmo.lab5.server;
+package ru.itmo.lab5.readers;
 
 import ru.itmo.lab5.exceptions.InputException;
 import ru.itmo.lab5.exceptions.UniqueException;
@@ -7,13 +7,14 @@ import ru.itmo.lab5.worker.Location;
 import ru.itmo.lab5.worker.Organization;
 
 
+import java.io.Serializable;
 import java.util.HashSet;
 
 import java.util.Iterator;
 import java.util.Scanner;
 
-public class OrganizationReader {
-    HashSet<String> organizationsFullNames = new HashSet<>();
+public class OrganizationReader implements Serializable {
+    public HashSet<String> organizationsFullNames = new HashSet<>();
 
     public Organization readOrganization() {
         Organization organization = new Organization();
@@ -196,7 +197,7 @@ public class OrganizationReader {
     }
 
 
-    protected boolean checkOrgFullName(String fullName) throws UniqueException {
+    public boolean checkOrgFullName(String fullName) throws UniqueException {
         for (String takenName : organizationsFullNames) {
             if (fullName.equals(takenName)) {
                 throw new UniqueException("Это название уже занято.");
@@ -204,7 +205,7 @@ public class OrganizationReader {
         }
         return true;
     }
-    protected void removeOrgNameFromList(String orgName){
+    public void removeOrgNameFromList(String orgName){
         Iterator<String> iterator= organizationsFullNames.iterator();
         while (iterator.hasNext()){
             String name = iterator.next();

@@ -1,4 +1,4 @@
-package ru.itmo.lab5.server;
+package ru.itmo.lab5.readers;
 
 import ru.itmo.lab5.exceptions.InputException;
 import ru.itmo.lab5.worker.*;

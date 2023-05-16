@@ -2,7 +2,9 @@ package ru.itmo.lab5.worker;
 
 import ru.itmo.lab5.exceptions.InputException;
 
-public enum Position {
+import java.io.Serializable;
+
+public enum Position implements Serializable {
     LABORER,
     ENGINEER,
     HEAD_OF_DEPARTMENT,

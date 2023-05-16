@@ -2,7 +2,9 @@ package ru.itmo.lab5.worker;
 
 import ru.itmo.lab5.exceptions.InputException;
 
-public class Location {
+import java.io.Serializable;
+
+public class Location implements Serializable {
     private int x;
     private Long y; //Поле не может быть null
     private Integer z; //Поле не может быть null

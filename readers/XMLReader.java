@@ -1,4 +1,4 @@
-package ru.itmo.lab5.server;
+package ru.itmo.lab5.readers;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,8 +18,8 @@ import org.xml.sax.SAXException;
 import ru.itmo.lab5.exceptions.InputException;
 import ru.itmo.lab5.worker.*;
 
-import static ru.itmo.lab5.server.WorkerReader.formatter;
-import static ru.itmo.lab5.server.WorkerReader.formatterTime;
+import static ru.itmo.lab5.readers.WorkerReader.formatter;
+import static ru.itmo.lab5.readers.WorkerReader.formatterTime;
 
 public class XMLReader {
 
@@ -176,4 +176,5 @@ public class XMLReader {
 
         return workers;
     }
+
 }

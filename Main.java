@@ -3,18 +3,16 @@ package ru.itmo.lab5;
 
 import org.xml.sax.SAXException;
 
-import ru.itmo.lab5.exceptions.InputException;
-import ru.itmo.lab5.exceptions.ParserExeption;
-import ru.itmo.lab5.server.CommandReader;
-import ru.itmo.lab5.server.OrganizationReader;
-import ru.itmo.lab5.server.WorkerReader;
+import ru.itmo.lab5.readers.CommandReader;
+import ru.itmo.lab5.readers.OrganizationReader;
+import ru.itmo.lab5.readers.WorkerReader;
 import ru.itmo.lab5.worker.Worker;
 
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
 import java.util.TreeSet;
 
-import static ru.itmo.lab5.server.XMLReader.parseXML;
+import static ru.itmo.lab5.readers.XMLReader.parseXML;
 
 
 class Main {

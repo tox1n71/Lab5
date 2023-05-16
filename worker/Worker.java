@@ -1,14 +1,15 @@
 package ru.itmo.lab5.worker;
 
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-import static ru.itmo.lab5.server.WorkerReader.formatter;
-import static ru.itmo.lab5.server.WorkerReader.formatterTime;
+import static ru.itmo.lab5.readers.WorkerReader.formatter;
+import static ru.itmo.lab5.readers.WorkerReader.formatterTime;
 
-public class Worker implements Comparable<Worker>{
+public class Worker implements Comparable<Worker>, Serializable {
     private int id; //Значение поля должно быть больше 0, Значение этого поля должно быть уникальным, Значение этого поля должно генерироваться автоматически
     private String name; //Поле не может быть null, Строка не может быть пустой
     private Coordinates coordinates; //Поле не может быть null

@@ -2,7 +2,9 @@ package ru.itmo.lab5.worker;
 
 import ru.itmo.lab5.exceptions.InputException;
 
-public class Address {
+import java.io.Serializable;
+
+public class Address implements Serializable {
     private String street; //Строка не может быть пустой, Поле может быть null
 
     private String zipCode; //Длина строки должна быть не меньше 4, Поле не может быть null

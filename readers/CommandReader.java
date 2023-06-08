@@ -147,7 +147,8 @@ public class CommandReader {
 //                                System.out.println("Неверный формат команды");
 //                            }
 //                            commandHistory.push(input.trim());
-//                        } else if (input.matches("execute_script \\S*")) {
+//                        }
+//                        else if (input.matches("execute_script \\S*")) {
 //                            String[] tokens = input.split(" ");
 //                            if (tokens.length == 2) {
 //                                String scriptFileName = tokens[1];

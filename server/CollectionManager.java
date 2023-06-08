@@ -2,13 +2,10 @@ package ru.itmo.lab5.server;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import ru.itmo.lab5.commands.Command;
-import ru.itmo.lab5.commands.HelpCommand;
-import ru.itmo.lab5.commands.ShowCommand;
 import ru.itmo.lab5.exceptions.InputException;
 import ru.itmo.lab5.exceptions.UniqueException;
 import ru.itmo.lab5.exceptions.WrongScriptDataException;
 import ru.itmo.lab5.readers.OrganizationReader;
-import ru.itmo.lab5.readers.WorkerReader;
 import ru.itmo.lab5.worker.*;
 
 import java.io.FileWriter;
@@ -19,6 +16,7 @@ import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.regex.*;
 import java.io.*;
+import java.util.stream.Collectors;
 import javax.xml.parsers.*;
 
 import org.xml.sax.*;
@@ -28,17 +26,15 @@ import static ru.itmo.lab5.readers.WorkerReader.formatterTime;
 
 
 public class CollectionManager {
-    Scanner scanner = new Scanner(System.in);
-    boolean isProgramActive = true;
+
 
 
     File fileName;
-    TreeSet<Worker> workers = new TreeSet<>();
+    TreeSet<Worker> workers;
     HashSet<Integer> workersIds = new HashSet<>();
     HashSet<String> executedScripts = new HashSet<>();
     Stack<String> commandHistory = new Stack<>();
     OrganizationReader organizationReader = new OrganizationReader();
-    WorkerReader workerReader;
     HashSet<String> commands = new HashSet<>();
 
     {
@@ -51,10 +47,12 @@ public class CollectionManager {
         commands.add("clear");
         commands.add("filter_less_than_organization");
         commands.add("remove_lower");
-        commands.add("min_by_name");
+        commands.add("min_by_name");//TODO: !fi
         commands.add("remove_by_id");
         commands.add("add_if_min");
         commands.add("update_by_id");
+        commands.add("exit");
+        commands.add("execute_script");
     }
 
 
@@ -116,28 +114,28 @@ public class CollectionManager {
         return workers.toString();
     }
 
-    private void exit() {
-        isProgramActive = false;
-        System.out.println("Завершение программы...");
+    public String exit() throws IOException {
+        save();
+        return "Коллекция сохранена на сервере.\n" + "Завершение работы...";
     }
 
     public String add(Worker worker) {
         worker.setId(getFreeId());
         worker.setCreationDate(LocalDate.now());
-        workers.add(worker);
-        return ("Введенный элемент добавлен в коллекцию с id" + worker.getId());
+        organizationReader.organizationsFullNames.add(worker.getOrganization().getFullName());
+        if (workers.add(worker)){
+        return ("Введенный элемент добавлен в коллекцию с id: " + worker.getId());}
+        else {
+            return "Работник не уникален и не был добавлен в коллекцию";
+        }
     }
 
     public String clear() {
-        Iterator<Worker> iterator = workers.iterator();
-        while (iterator.hasNext()) {
-            Worker worker = iterator.next();
-            workersIds.remove(worker.getId());
-//            organizationReader.organizationsFullNames.remove(worker.getOrganization().getFullName());
-        }
+        workers.stream().map(Worker::getId).forEach(workersIds::remove);
         workers.clear();
-        return ("Коллекция очищена");
+        return "Коллекция очищена";
     }
+
 
     public String removeById(int id) {
         boolean found = false;
@@ -173,53 +171,35 @@ public class CollectionManager {
         return id;
     }
 
-
+//??
     public String filterLessThanOrganization(Organization inputOrganization) {
-        String res = " ";
-        for (Worker worker : workers) {
-            if (inputOrganization.getAnnualTurnover() == null) {
-                res = ("Сравнить с null значением не получится");
-                break;
-            }
-            if (!(worker.getOrganization().getAnnualTurnover() == null)) {
-                if (worker.getOrganization().compareTo(inputOrganization) < 0) {
-                    res += (worker);
-                } else {
-                    res = ("Работников с меньшей организацией нет");
-                }
-            }
+        if (inputOrganization.getAnnualTurnover() == null) {
+            return "Сравнить с null значением не получится";
         }
-        return res;
+
+        List<Worker> filteredWorkers = workers.stream()
+                .filter(worker -> worker.getOrganization().getAnnualTurnover() != null)
+                .filter(worker -> worker.getOrganization().compareTo(inputOrganization) < 0)
+                .toList();
+        if (filteredWorkers.isEmpty()) {
+            return "Работников с меньшей организацией нет";
+        } else {
+            return filteredWorkers.stream().map(Object::toString).collect(Collectors.joining());
+        }
     }
+
 
     public String minByName() {
-        if (workers.isEmpty()) {
-            return ("Список работников пуст.");
-        }
-        Worker minWorker = null;
-        Iterator<Worker> iterator = workers.iterator();
-        while (iterator.hasNext()) {
-            Worker currentWorker = iterator.next();
-            if (minWorker == null || currentWorker.getName().compareTo(minWorker.getName()) < 0) {
-                minWorker = currentWorker;
-            }
-        }
-
-        if (minWorker == null) {
-            return ("Не удалось найти работника с минимальным именем.");
-        } else {
-            return ("Работник с минимальным именем: \n" + minWorker);
-        }
+        Optional<Worker> minWorker = workers.stream()
+                .min(Comparator.comparing(Worker::getName));
+        return minWorker.map(worker -> "Работник с минимальным именем: \n" + worker).orElse("Не удалось найти работника с минимальным именем.");
     }
 
+
     public String printDescending() {
-        String res = "";
-        Iterator<Worker> descendingIterator = workers.descendingIterator();
-        while (descendingIterator.hasNext()) {
-            Worker worker = descendingIterator.next();
-            res += worker + "\n";
-        }
-        return res;
+        return workers.descendingSet().stream()
+                .map(Worker::toString)
+                .collect(Collectors.joining("\n"));
     }
 
     public String history() {
@@ -233,46 +213,41 @@ public class CollectionManager {
     }
 
     public String addIfMin(Worker mayBeAddedWorker) {
-        boolean added = false;
-        String res = "";
         if (workers.isEmpty()) {
-            res = ("Коллекция пуста, воспользуйтесь командой 'add'");
-        } else {
-            if (mayBeAddedWorker.compareTo(workers.first()) < 0) {
-                mayBeAddedWorker.setId(getFreeId());
-                mayBeAddedWorker.setCreationDate(LocalDate.now());
-                workers.add(mayBeAddedWorker);
-                added = true;
-                res = ("Введенный элемент меньше и добавлен в коллекцию с id " + mayBeAddedWorker.getId());
-            }
-            if (!added) {
-                res = ("Введенный элемент больше минимального");
-            }
+            return ("Коллекция пуста, воспользуйтесь командой 'add'");
         }
-        return res;
+        Optional<Worker> minWorker = workers.stream()
+                .min(Comparator.naturalOrder());
+        if (mayBeAddedWorker.compareTo(minWorker.get()) >= 0) {
+            return ("Введенный элемент больше минимального");
+        }
+        mayBeAddedWorker.setId(getFreeId());
+        mayBeAddedWorker.setCreationDate(LocalDate.now());
+        workers.add(mayBeAddedWorker);
+        organizationReader.organizationsFullNames.add(mayBeAddedWorker.getOrganization().getFullName());
+        return ("Введенный элемент меньше и добавлен в коллекцию с id " + mayBeAddedWorker.getId());
     }
 
+
     public String removeLower(Worker removeLowerThanThisWorker) {
-        boolean removed = false;
-        String res = "";
-        if (workers.isEmpty()) {
-            System.err.println("Коллекция пуста, нет элементов для сравнения");
+        List<Worker> removedWorkers = workers.stream()
+                .filter(worker -> worker.compareTo(removeLowerThanThisWorker) < 0)
+                .peek(worker -> {
+                    organizationReader.organizationsFullNames.remove(worker.getOrganization().getFullName());
+                    workersIds.remove(worker.getId());
+                })
+                .collect(Collectors.toList());
+
+        if (removedWorkers.isEmpty()) {
+            return "Элементы меньше чем заданный не найдены";
         } else {
-            Iterator<Worker> iterator = workers.iterator();
-            while (iterator.hasNext()) {
-                Worker worker = iterator.next();
-                if (worker.compareTo(removeLowerThanThisWorker) < 0) {
-                    iterator.remove();
-                    res += ("Удален элемент с id " + worker.getId() + "\n");
-                    removed = true;
-                }
-            }
-            if (!removed) {
-                res = ("Элементы меньше чем заданный не найдены");
-            }
+            removedWorkers.forEach(workers::remove);
+            return removedWorkers.stream()
+                    .map(worker -> "Удален элемент с id " + worker.getId())
+                    .collect(Collectors.joining("\n"));
         }
-        return res;
     }
+
 
     public String updateById(int id, Worker returnmentWorker) {
         Iterator<Worker> iterator = workers.iterator();
@@ -300,18 +275,26 @@ public class CollectionManager {
         return exist;
     }
 
-    private void save() throws IOException {
-        FileWriter writer = new FileWriter(fileName, false);
-        writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n");
-        writer.write("<Workers>\n");
+    public String save() throws IOException {
+        try (FileWriter writer = new FileWriter(fileName, false)) {
+            writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n");
+            writer.write("<Workers>\n");
 
-        for (Worker worker : workers) {
-            writer.write(worker.toXml());
+            workers.stream()
+                    .map(Worker::toXml)
+                    .forEach(xml -> {
+                        try {
+                            writer.write(xml);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+
+            writer.write("</Workers>");
+            return ("Сохранение коллекции завершено");
         }
-        writer.write("</Workers>");
-        writer.close();
-        System.out.println("Сохранение завершено");
     }
+
 
     private void setUsedIdsAndOrgNames() {
         Iterator<Worker> iterator = workers.iterator();
@@ -322,127 +305,112 @@ public class CollectionManager {
         }
     }
 
-    private void executeScript(String ScriptFileName) throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(ScriptFileName));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            switch (line) {
-                case "add" -> {
-                    try {
-                        Worker worker = readWorkerFromFile(reader);
-
-                        workers.add(worker);
-                        System.out.println("Введенный элемент добавлен в коллекцию с id" + worker.getId());
-                        setUsedIdsAndOrgNames();
-                    } catch (WrongScriptDataException e) {
-                        System.err.println(e.getMessage());
-                    }
-                }
-                case "help" -> help();
-                case "info" -> info();
-                case "show" -> show();
-                case "clear" -> clear();
-                case "save" -> save();
-                case "exit" -> exit();
-                case "history" -> history();
-                case "min_by_name" -> minByName();
-                case "print_descending" -> printDescending();
-                case "add_if_min" -> {
-                    boolean added = false;
-
-                    try {
-                        Worker worker = readWorkerFromFile(reader);
-                        try {
-                            if (worker.compareTo(workers.first()) < 0) {
-                                workers.add(worker);
-                                added = true;
-                                System.out.println("Введенный элемент меньше и добавлен в коллекцию с id " + worker.getId());
-                            }
-                        } catch (NoSuchElementException e) {
-                            System.err.println("Команда add_if_min из скрипта не может быть выполнена, так как коллекция пуста.\n Добавьте элемент командой add");
-                        }
-                    } catch (WrongScriptDataException e) {
-                        System.err.println(e.getMessage());
-                    }
-                    if (!added) {
-                        System.out.println("Введенный элемент больше минимального");
-                    }
-                }
-                case "remove_lower" -> {
-                    boolean removed = false;
-                    Iterator<Worker> iterator = workers.iterator();
-                    try {
-                        Worker removeLowerThanThisWorker = readWorkerFromFile(reader);
-
-                        while (iterator.hasNext()) {
-                            Worker worker = iterator.next();
-                            try {
-                                if (worker.compareTo(removeLowerThanThisWorker) < 0) {
-                                    iterator.remove();
-                                    System.out.println("Удален элемент с id " + worker.getId());
-                                    removed = true;
-                                }
-                            } catch (NoSuchElementException e) {
-                                System.err.println("Команда remove_lower из скрипта не может быть выполнена, так как коллекция пуста.\n Добавьте элемент командой add");
-                            }
-                            if (!removed) {
-                                System.out.println("Элементы меньше чем заданный не найдены");
-                            }
-                        }
-                    } catch (WrongScriptDataException e) {
-                        System.err.println(e.getMessage());
-                    }
-                }
-                default -> {
-                    if (line.matches("remove_by_id \\d+")) {
-                        Pattern pattern = Pattern.compile("\\d+");
-                        Matcher matcher = pattern.matcher(line);
-                        if (matcher.find()) {
-                            int id = Integer.parseInt(matcher.group());
-//                            removeById(id);
-                        } else {
-                            System.out.println("Неверный формат команды");
-                        }
-                    } else if (line.matches("update_by_id \\d+")) {
-                        Pattern pattern = Pattern.compile("\\d+");
-                        Matcher matcher = pattern.matcher(line);
-                        if (matcher.find()) {
-                            int id = Integer.parseInt(matcher.group());
-//                            updateById(id);
-                        } else {
-                            System.out.println("Неверный формат команды");
-                        }
-                    } else if (line.matches("execute_script \\S*")) {
-                        String[] tokens = line.split(" ");
-                        if (tokens.length == 2) {
-                            String inScriptFileName = tokens[1];
-                            if (!executedScripts.contains(inScriptFileName)) {
-                                executedScripts.add(inScriptFileName);
-                                try {
-                                    BufferedReader inScriptReader = new BufferedReader(new FileReader(inScriptFileName));
-                                    String inScriptLine;
-                                    while ((inScriptLine = inScriptReader.readLine()) != null) {
-                                        if (inScriptLine.startsWith("execute_script")) {
-                                            String scriptName = inScriptLine.split(" ")[1];
-                                            executeScript(scriptName);
-                                        } else {
-                                            // Обработка других команд
-                                        }
-                                    }
-                                    inScriptReader.close();
-                                } catch (IOException e) {
-                                    System.out.println("Ошибка при выполнении скрипта " + inScriptFileName + ": " + e.getMessage());
-                                }
-                                executedScripts.remove(inScriptFileName);
-                            } else {
-                                System.out.println("Скрипт " + inScriptFileName + " уже был выполнен. Пропускаем...");
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        reader.close();
+    public String executeScript() throws IOException {
+        return "popa";
+//        BufferedReader reader = new BufferedReader(new FileReader(file));
+//        String line;
+//        String res = "";
+//        while ((line = reader.readLine()) != null) {
+//            switch (line) {
+//                case "add" -> {
+//                    try {
+//                        Worker worker = readWorkerFromFile(reader);
+//
+//                        res += add(worker) + "\n";
+//                        setUsedIdsAndOrgNames();
+//                    } catch (WrongScriptDataException e) {
+//                        System.err.println(e.getMessage());
+//                    }
+//                }
+//                case "help" -> res +=help()+ "\n";
+//                case "info" -> res +=info()+ "\n";
+//                case "show" -> res +=show()+ "\n";
+//                case "clear" -> res +=clear()+ "\n";
+////                case "exit" -> exit();
+//                case "history" -> res +=history()+ "\n";
+//                case "min_by_name" -> res +=minByName()+ "\n";
+//                case "print_descending" -> res +=printDescending()+ "\n";
+//                case "add_if_min" -> {
+//                    boolean added = false;
+//
+//                    try {
+//                        Worker worker = readWorkerFromFile(reader);
+//                        try {
+//                            res += addIfMin(worker)+ "\n";
+//
+//                        } catch (NoSuchElementException e) {
+//                            res += "Команда add_if_min из скрипта не может быть выполнена, так как коллекция пуста.\n Добавьте элемент командой add";
+//                        }
+//                    } catch (WrongScriptDataException e) {
+//                        res += (e.getMessage());
+//                    }
+//                    if (!added) {
+//                        res += "Введенный элемент больше минимального"+ "\n";
+//                    }
+//                }
+//                case "remove_lower" -> {
+//                    try {
+//                        Worker removeLowerThanThisWorker = readWorkerFromFile(reader);
+//                        res += removeLower(removeLowerThanThisWorker);
+//                    } catch (WrongScriptDataException e) {
+//                        res += (e.getMessage());
+//                    }
+//                }
+//                default -> {
+//                    if (line.matches("remove_by_id \\d+")) {
+//                        Pattern pattern = Pattern.compile("\\d+");
+//                        Matcher matcher = pattern.matcher(line);
+//                        if (matcher.find()) {
+//                            int id = Integer.parseInt(matcher.group());
+//                            res+= removeById(id)+ "\n";
+//                        } else {
+//                            res+=("Неверный формат команды")+ "\n";
+//                        }
+//                    } else if (line.matches("update_by_id \\d+")) {
+//                        Pattern pattern = Pattern.compile("\\d+");
+//                        Matcher matcher = pattern.matcher(line);
+//                        if (matcher.find()) {
+//                            int id = Integer.parseInt(matcher.group());
+//                            try {
+//                                Worker worker = readWorkerFromFile(reader);
+//                                res += updateById(id, worker)+ "\n";
+//                            } catch (WrongScriptDataException e) {
+//                                res += e.getMessage()+ "\n";
+//                            }
+//                        } else {
+//                            res += "Неверный формат команды"+ "\n";
+//                        }
+//                    }
+////                    else if (line.matches("execute_script \\S*")) {
+////                        String[] tokens = line.split(" ");
+////                        if (tokens.length == 2) {
+////                            String inScriptFileName = tokens[1];
+////                            if (!executedScripts.contains(inScriptFileName)) {
+////                                executedScripts.add(inScriptFileName);
+////                                try {
+////                                    BufferedReader inScriptReader = new BufferedReader(new FileReader(inScriptFileName));
+////                                    String inScriptLine;
+////                                    while ((inScriptLine = inScriptReader.readLine()) != null) {
+////                                        if (inScriptLine.startsWith("execute_script")) {
+////                                            String scriptName = inScriptLine.split(" ")[1];
+////                                            executeScript(scriptName);
+////                                        } else {
+////                                            // Обработка других команд
+////                                        }
+////                                    }
+////                                    inScriptReader.close();
+////                                } catch (IOException e) {
+////                                    System.out.println("Ошибка при выполнении скрипта " + inScriptFileName + ": " + e.getMessage());
+////                                }
+////                                executedScripts.remove(inScriptFileName);
+////                            } else {
+////                                System.out.println("Скрипт " + inScriptFileName + " уже был выполнен. Пропускаем...");
+////                            }
+//                        }
+//                    }
+//                }
+//        reader.close();
+//        return res;
     }
 
     private Worker readWorkerFromFile(BufferedReader readerDad) throws IOException, WrongScriptDataException {

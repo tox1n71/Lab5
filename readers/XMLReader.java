@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.util.HashSet;
 import java.util.TreeSet;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -22,6 +23,7 @@ import static ru.itmo.lab5.readers.WorkerReader.formatter;
 import static ru.itmo.lab5.readers.WorkerReader.formatterTime;
 
 public class XMLReader {
+    public static HashSet<String> namesForClient = new HashSet<>();
 
     public static TreeSet<Worker> parseXML(File file, OrganizationReader organizationReader) throws ParserConfigurationException, IOException, SAXException {
         TreeSet<Worker> workers = new TreeSet<>();
@@ -168,6 +170,8 @@ public class XMLReader {
                 address.setTown(location);
                 organization.setPostalAddress(address);
                 worker.setOrganization(organization);
+                organizationReader.organizationsFullNames.add(worker.getOrganization().getFullName());
+                namesForClient.add(worker.getOrganization().getFullName());
                 if (add){
                     workers.add(worker);
                 }

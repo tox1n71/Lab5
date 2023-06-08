@@ -157,6 +157,7 @@ public class WorkerReader {
         worker.setPosition(readPosition());
 
         worker.setOrganization(organizationReader.readOrganization());
+        organizationReader.organizationsFullNames.add(worker.getOrganization().getFullName());
         return worker;
     }
 }

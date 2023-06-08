@@ -134,9 +134,10 @@ public class OrganizationReader implements Serializable {
             }
             if (!fullName.trim().equals("")) {
                 try {
-                    checkOrgFullName(fullName);
+                    if (!checkOrgFullName(fullName)){
+                        System.out.println("Введите название организации еще раз");
+                    }
                     isUnique = true;
-                    organizationsFullNames.add(fullName);
                     return fullName;
                 } catch (UniqueException e) {
                     System.err.println(e.getMessage() + organizationsFullNames);
@@ -221,5 +222,9 @@ public class OrganizationReader implements Serializable {
     }
     protected void updateOrganizationsFullNames() {
         organizationsFullNames.clear();
+    }
+
+    public void setOrganizationsFullNames(HashSet<String> organizationsFullNames) {
+        this.organizationsFullNames = organizationsFullNames;
     }
 }

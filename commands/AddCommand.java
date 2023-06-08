@@ -26,8 +26,7 @@ public class AddCommand  implements Command {
     }
 
     public String execute(){
-        collectionManager.add(worker);
-        return ("Введенный элемент добавлен в коллекцию с id" + worker.getId());
+        return collectionManager.add(worker);
     }
 
     @Override

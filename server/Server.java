@@ -34,8 +34,9 @@ public class Server {
     OrganizationReader organizationReader = new OrganizationReader();
 
     public void start() throws Exception {
-        final String EnvironmentalVariable = "MY_FILE";
-        String fileName = System.getenv(EnvironmentalVariable);
+//        final String EnvironmentalVariable = "MY_FILE";
+//        String fileName = System.getenv(EnvironmentalVariable);
+        String fileName = "LolKekMambet.xml";
         if (fileName == null) {
             logger.warning("Переменная окружения не найдена. Установите переменную окружения и повторите попытку");
             System.exit(0);

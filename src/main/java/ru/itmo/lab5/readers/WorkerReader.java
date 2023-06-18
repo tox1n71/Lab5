@@ -1,6 +1,7 @@
 package ru.itmo.lab5.readers;
 
 import ru.itmo.lab5.exceptions.InputException;
+import ru.itmo.lab5.utils.User;
 import ru.itmo.lab5.worker.*;
 
 import java.time.LocalDate;
@@ -17,8 +18,13 @@ public class WorkerReader {
     public static DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     public static DateTimeFormatter formatterTime = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
     OrganizationReader organizationReader;
+    User user;
     public WorkerReader(OrganizationReader organizationReader){
         this.organizationReader = organizationReader;
+    }
+    public WorkerReader(OrganizationReader organizationReader, User user){
+        this.organizationReader = organizationReader;
+        this.user = user;
     }
 
     private LocalDate readStartDate() {
@@ -155,7 +161,7 @@ public class WorkerReader {
 
         worker.setEndDate(readEndDate());
         worker.setPosition(readPosition());
-
+        worker.setUser(user);
         worker.setOrganization(organizationReader.readOrganization());
         organizationReader.organizationsFullNames.add(worker.getOrganization().getFullName());
         return worker;

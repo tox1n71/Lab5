@@ -5,6 +5,8 @@ import org.xml.sax.SAXException;
 import ru.itmo.lab5.commands.Command;
 import ru.itmo.lab5.commands.SaveCommand;
 import ru.itmo.lab5.readers.OrganizationReader;
+import ru.itmo.lab5.utils.DataProvider;
+import ru.itmo.lab5.utils.User;
 import ru.itmo.lab5.worker.Worker;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -35,6 +37,7 @@ public class Server {
 
     private CollectionManager collectionManager = new CollectionManager();
     OrganizationReader organizationReader = new OrganizationReader();
+    DataProvider dataProvider = new DataProvider();
 
     public void start() throws Exception {
 //        final String EnvironmentalVariable = "MY_FILE";
@@ -151,7 +154,17 @@ public class Server {
                                 e.printStackTrace();
                             }
                         }, responsePool);
-                    } else {
+                    } else if(object instanceof User){
+                        User receivedUser = (User) object;
+                        logger.info("Received user: " + receivedUser.getName());
+                        boolean response = dataProvider.checkUser(receivedUser);
+                        InetAddress address = packet.getAddress();
+                        int clientPort = packet.getPort();
+                        byte[] responseData = Boolean.toString(response).getBytes();
+                        DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, address, clientPort);
+                        serverSocket.send(responsePacket);
+                    }
+                    else {
                         String receivedShit = (String) object;
                         OrganizationReader response = this.organizationReader;
                         InetAddress address = packet.getAddress();

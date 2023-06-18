@@ -4,6 +4,7 @@ import ru.itmo.lab5.commands.*;
 import ru.itmo.lab5.exceptions.WrongScriptDataException;
 import ru.itmo.lab5.readers.OrganizationReader;
 import ru.itmo.lab5.readers.WorkerReader;
+import ru.itmo.lab5.utils.User;
 import ru.itmo.lab5.worker.Organization;
 import ru.itmo.lab5.worker.Worker;
 
@@ -18,6 +19,8 @@ import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static ru.itmo.lab5.readers.UserReader.readUser;
 
 public class Client {
 
@@ -41,14 +44,27 @@ public class Client {
 
         Scanner scanner = new Scanner(System.in);
         socket.setSoTimeout(3000);
-
+        User user = null;
         // Цикл отправки команд на сервер
         boolean isProgrammActive = true;
         while (isProgrammActive) {
             System.out.print(">> ");
             try {
                 String input = scanner.nextLine();
-
+                if (user == null){
+                    System.out.println("Залогинься уебок");
+                    switch (input.trim()){
+                        case "login":
+                            User loggingUser = readUser();
+                            if (sendUserToServer(loggingUser, address, port)){
+                                user = loggingUser;
+                            }
+                            else {
+                                System.out.println("Пароль или логин введены неверно");
+                            }
+                            break;
+                    }
+                }
                 switch (input.trim()) {
 
                     case "help":
@@ -409,6 +425,35 @@ public class Client {
         }
     }
 
+    private boolean sendUserToServer(User user, InetAddress address, int port) throws IOException {
+        boolean response = false;
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(baos);
+        oos.writeObject(user);
+        oos.flush();
+
+        byte[] serializedUser = baos.toByteArray();
+
+        DatagramPacket packet = new DatagramPacket(serializedUser,
+                serializedUser.length,
+                address,
+                port);
+        socket.send(packet);
+
+        // получаем ответ от сервера
+        try {
+            byte[] buffer = new byte[BUF_SIZE];
+
+            packet = new DatagramPacket(buffer, BUF_SIZE);
+            socket.receive(packet);
+            String str = new String(packet.getData(), 0, packet.getLength());
+            response = Boolean.parseBoolean(str);
+        } catch (SocketTimeoutException e) {
+            System.out.println("Не удалось подключиться к серверу. Повторите попытку позже.");
+        }
+
+        return response;
+    }
 
     public static void main(String[] args) {
         try {

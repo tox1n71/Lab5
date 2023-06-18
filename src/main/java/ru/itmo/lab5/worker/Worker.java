@@ -1,9 +1,14 @@
 package ru.itmo.lab5.worker;
 
 
+import org.hibernate.boot.model.relational.SqlStringGenerationContext;
+import ru.itmo.lab5.utils.User;
+
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Objects;
 
 import static ru.itmo.lab5.readers.WorkerReader.formatter;
@@ -20,6 +25,7 @@ public class Worker implements Comparable<Worker>, Serializable {
     private LocalDateTime endDate; //Поле может быть null
     private Position position; //Поле не может быть null
     private Organization organization; //Поле может быть null
+    private User user;
 
 
     public Worker(){}
@@ -62,6 +68,12 @@ public class Worker implements Comparable<Worker>, Serializable {
 
     public LocalDate getCreationDate() {
         return creationDate;
+    }
+    public String getCreationDateString(){
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        LocalDate localDate = LocalDate.now();
+        String formattedDate = localDate.format(formatter);
+        return formattedDate;
     }
 
     public void setCreationDate(LocalDate creationDate) throws NullPointerException {
@@ -112,6 +124,13 @@ public class Worker implements Comparable<Worker>, Serializable {
         this.organization = organization;
     }
 
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 
     @Override
     public int compareTo(Worker o) {

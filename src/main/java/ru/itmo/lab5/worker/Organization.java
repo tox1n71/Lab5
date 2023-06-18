@@ -4,6 +4,11 @@ import java.io.Serializable;
 
 public class Organization implements Comparable<Organization>, Serializable {
 
+    private int id;
+
+    public int getId() {
+        return id;
+    }
 
     private String fullName; //Строка не может быть пустой, Значение этого поля должно быть уникальным, Поле может быть null
     private Float annualTurnover; //Поле может быть null, Значение поля должно быть больше 0

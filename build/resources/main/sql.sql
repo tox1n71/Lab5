@@ -34,8 +34,9 @@ create table worker
     start_date            date             not null,
     end_date              timestamp,
     position              varchar(255)     not null,
-    organization_fullname varchar
-        references organization (fullname),
-    username              varchar(255)     not null
-        references users (username)
+    organization_id integer
+        references organization (id),
+    user_id              integer    not null
+        references users (id)
 );
+

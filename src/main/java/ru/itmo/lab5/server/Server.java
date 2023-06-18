@@ -15,6 +15,10 @@ import java.net.InetAddress;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.TreeSet;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.logging.Logger;
 
 import static ru.itmo.lab5.readers.XMLReader.parseXML;
@@ -97,56 +101,83 @@ public class Server {
 
         new Thread(consoleReader).start();
 
-        while (true) {
+        ForkJoinPool requestPool = new ForkJoinPool();
 
+// Создаем ThreadPool для обработки запросов
+        ExecutorService processingPool = Executors.newCachedThreadPool();
+
+// Создаем ForkJoinPool для отправки ответов
+        ForkJoinPool responsePool = new ForkJoinPool();
+
+        while (true) {
             DatagramPacket packet = new DatagramPacket(buf, BUF_SIZE);
             serverSocket.receive(packet);
 
+            // Чтение запроса в отдельном потоке
+            CompletableFuture<Object> future = CompletableFuture.supplyAsync(() -> {
+                try {
+                    ByteArrayInputStream bais = new ByteArrayInputStream(packet.getData(), 0, packet.getLength());
+                    ObjectInputStream ois = new ObjectInputStream(bais);
+                    Object object = ois.readObject();
+                    ois.close();
+                    bais.close();
+                    return object;
+                } catch (IOException | ClassNotFoundException e) {
+                    e.printStackTrace();
+                    return null;
+                }
+            }, requestPool);
 
-            ByteArrayInputStream bais = new ByteArrayInputStream(packet.getData(), 0, packet.getLength());
+            // Обработка запроса в отдельном потоке
+            future.thenAcceptAsync(object -> {
+                try {
+                    if (object instanceof Command) {
+                        Command receivedCommand = (Command) object;
+                        logger.info("Received command: "+ receivedCommand.getName());
+                        receivedCommand.setCollectionManager(collectionManager);
+                        String response = collectionManager.executeCommand(receivedCommand);
+                        InetAddress address = packet.getAddress();
+                        int clientPort = packet.getPort();
+                        byte[] responseData = response.getBytes();
+                        DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, address, clientPort);
+                        responsePacket.setData(responseData, 0, responseData.length);
+                        serverSocket.setSendBufferSize(responseData.length);
 
-            ObjectInputStream ois = new ObjectInputStream(bais);
+                        // Отправка ответа в отдельном потоке
+                        CompletableFuture.runAsync(() -> {
+                            try {
+                                serverSocket.send(responsePacket);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }, responsePool);
+                    } else {
+                        String receivedShit = (String) object;
+                        OrganizationReader response = this.organizationReader;
+                        InetAddress address = packet.getAddress();
+                        int clientPort = packet.getPort();
+                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        ObjectOutputStream oos = new ObjectOutputStream(baos);
+                        oos.writeObject(response);
+                        oos.flush();
+                        byte[] responseData = baos.toByteArray();
+                        DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, address, clientPort);
+                        responsePacket.setData(responseData, 0, responseData.length);
+                        serverSocket.setSendBufferSize(responseData.length);
 
-            Object object = ois.readObject();
-
-            if (object instanceof Command) {
-                Command receivedCommand = (Command) object;
-                logger.info("Received command: "+ receivedCommand.getName());
-
-                receivedCommand.setCollectionManager(collectionManager);
-                ois.close();
-                bais.close();
-
-                String response = collectionManager.executeCommand(receivedCommand);
-
-                InetAddress address = packet.getAddress();
-                int clientPort = packet.getPort();
-                byte[] responseData = response.getBytes();
-                DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, address, clientPort);
-                responsePacket.setData(responseData, 0, responseData.length);
-                serverSocket.setSendBufferSize(responseData.length);
-                serverSocket.send(responsePacket);
-            } else {
-                String receivedShit = (String) object;
-                ois.close();
-                bais.close();
-
-                OrganizationReader response = this.organizationReader;
-
-                InetAddress address = packet.getAddress();
-                int clientPort = packet.getPort();
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                ObjectOutputStream oos = new ObjectOutputStream(baos);
-                oos.writeObject(response);
-                oos.flush();
-                byte[] responseData = baos.toByteArray();
-                DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, address, clientPort);
-                responsePacket.setData(responseData, 0, responseData.length);
-                serverSocket.setSendBufferSize(responseData.length);
-                serverSocket.send(responsePacket);
-            }
-
-
+                        // Отправка ответа в отдельном потоке
+                        CompletableFuture.runAsync(() -> {
+                            try {
+                                serverSocket.send(responsePacket);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }, responsePool);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }, processingPool);
         }
     }
 

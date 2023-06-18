@@ -7,6 +7,7 @@ import ru.itmo.lab5.exceptions.InputException;
 import ru.itmo.lab5.exceptions.UniqueException;
 import ru.itmo.lab5.exceptions.WrongScriptDataException;
 import ru.itmo.lab5.readers.OrganizationReader;
+import ru.itmo.lab5.utils.DataProvider;
 import ru.itmo.lab5.worker.*;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -28,7 +29,6 @@ import static ru.itmo.lab5.readers.WorkerReader.formatterTime;
 public class CollectionManager {
 
 
-
     File fileName;
     TreeSet<Worker> workers;
     HashSet<Integer> workersIds = new HashSet<>();
@@ -36,6 +36,8 @@ public class CollectionManager {
     Stack<String> commandHistory = new Stack<>();
     OrganizationReader organizationReader = new OrganizationReader();
     HashSet<String> commands = new HashSet<>();
+    DataProvider dataProvider = new DataProvider();
+
 
     {
         commands.add("help");
@@ -123,9 +125,9 @@ public class CollectionManager {
         worker.setId(getFreeId());
         worker.setCreationDate(LocalDate.now());
         organizationReader.organizationsFullNames.add(worker.getOrganization().getFullName());
-        if (workers.add(worker)){
-        return ("Введенный элемент добавлен в коллекцию с id: " + worker.getId());}
-        else {
+        if (workers.add(worker)) {
+            return ("Введенный элемент добавлен в коллекцию с id: " + worker.getId());
+        } else {
             return "Работник не уникален и не был добавлен в коллекцию";
         }
     }
@@ -171,7 +173,7 @@ public class CollectionManager {
         return id;
     }
 
-//??
+    //??
     public String filterLessThanOrganization(Organization inputOrganization) {
         if (inputOrganization.getAnnualTurnover() == null) {
             return "Сравнить с null значением не получится";
@@ -558,5 +560,9 @@ public class CollectionManager {
     public TreeSet<Worker> getWorkers() {
         return workers;
     }
+
+
+
+
 }
 

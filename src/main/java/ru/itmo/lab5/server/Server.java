@@ -42,37 +42,45 @@ public class Server {
     public void start() throws Exception {
 //        final String EnvironmentalVariable = "MY_FILE";
 //        String fileName = System.getenv(EnvironmentalVariable);
-        String fileName = "LolKekMambet.xml";
-        if (fileName == null) {
-            logger.warning("Переменная окружения не найдена. Установите переменную окружения и повторите попытку");
-            System.exit(0);
+//        String fileName = "LolKekMambet.xml";
+//        if (fileName == null) {
+//            logger.warning("Переменная окружения не найдена. Установите переменную окружения и повторите попытку");
+//            System.exit(0);
+//        } else {
+//            try {
+//                File file = new File(fileName);
+//                if (!file.canRead()) {
+//                    logger.warning("Ваш файл закрыт для чтения. Измените права доступа или выберите другой файл");
+//                } else if (!file.canWrite()) {
+//                    logger.warning("Ваш файл закрыт для записи. Измените права доступа или выберите другой файл");
+//                } else {
+//                    if (file.length() == 0) {
+//                        TreeSet<Worker> workers = new TreeSet<>();
+//                        collectionManager = new CollectionManager(file, workers);
+//                    } else {
+//                        TreeSet<Worker> workers = parseXML(file, organizationReader);
+//                        collectionManager = new CollectionManager(file, workers);
+//                    }
+//                }
+//
+//            } catch (FileNotFoundException e) {
+//                logger.warning("Файл заданный переменной окружения не найден. Добавьте файл или проверьте переменную окружения и повторите попытку");
+//            } catch (ParserConfigurationException | SAXException e) {
+//                logger.warning("Файл не валидный. Необходимо выбрать другой файл.");
+//            } catch (IOException e) {
+//                logger.warning(e.getMessage());
+//            }
+//        }
+        if (dataProvider.getWorkers() == null) {
+            TreeSet<Worker> workers = new TreeSet<>();
+            logger.info("Коллекция сформирована");
+            collectionManager = new CollectionManager(workers, dataProvider);
         } else {
-            try {
-                File file = new File(fileName);
-                if (!file.canRead()) {
-                    logger.warning("Ваш файл закрыт для чтения. Измените права доступа или выберите другой файл");
-                } else if (!file.canWrite()) {
-                    logger.warning("Ваш файл закрыт для записи. Измените права доступа или выберите другой файл");
-                } else {
-                    if (file.length() == 0) {
-                        TreeSet<Worker> workers = new TreeSet<>();
-                        collectionManager = new CollectionManager(file, workers);
-                    } else {
-                        TreeSet<Worker> workers = parseXML(file, organizationReader);
-                        collectionManager = new CollectionManager(file, workers);
-                    }
-                }
-
-            } catch (FileNotFoundException e) {
-                logger.warning("Файл заданный переменной окружения не найден. Добавьте файл или проверьте переменную окружения и повторите попытку");
-            } catch (ParserConfigurationException | SAXException e) {
-                logger.warning("Файл не валидный. Необходимо выбрать другой файл.");
-            } catch (IOException e) {
-                logger.warning(e.getMessage());
-            }
+            TreeSet<Worker> workers = dataProvider.getWorkers();
+            logger.info("Коллекция сформирована");
+            collectionManager = new CollectionManager(workers, dataProvider);
+            organizationReader.setOrganizationsFullNames(dataProvider.organizationsFullNames());
         }
-
-
 
 
         DatagramSocket serverSocket = new DatagramSocket(port);
@@ -85,7 +93,7 @@ public class Server {
             while (true) {
                 try {
                     String input = scanner.nextLine();
-                    switch (input.trim().toLowerCase()){
+                    switch (input.trim().toLowerCase()) {
                         case "save" -> {
                             SaveCommand saveCommand = new SaveCommand();
                             saveCommand.setCollectionManager(collectionManager);
@@ -95,7 +103,7 @@ public class Server {
                     }
                 } catch (IOException e) {
                     logger.warning("Ошибка при чтении с консоли сервера: " + e.getMessage());
-                }catch (NoSuchElementException e){
+                } catch (NoSuchElementException e) {
                     logger.warning("Отключение сервера: cntl+D");
                     System.exit(0);
                 }
@@ -136,7 +144,7 @@ public class Server {
                 try {
                     if (object instanceof Command) {
                         Command receivedCommand = (Command) object;
-                        logger.info("Received command: "+ receivedCommand.getName());
+                        logger.info("Received command: " + receivedCommand.getName());
                         receivedCommand.setCollectionManager(collectionManager);
                         String response = collectionManager.executeCommand(receivedCommand);
                         InetAddress address = packet.getAddress();
@@ -154,17 +162,7 @@ public class Server {
                                 e.printStackTrace();
                             }
                         }, responsePool);
-                    } else if(object instanceof User){
-                        User receivedUser = (User) object;
-                        logger.info("Received user: " + receivedUser.getName());
-                        boolean response = dataProvider.checkUser(receivedUser);
-                        InetAddress address = packet.getAddress();
-                        int clientPort = packet.getPort();
-                        byte[] responseData = Boolean.toString(response).getBytes();
-                        DatagramPacket responsePacket = new DatagramPacket(responseData, responseData.length, address, clientPort);
-                        serverSocket.send(responsePacket);
-                    }
-                    else {
+                    } else {
                         String receivedShit = (String) object;
                         OrganizationReader response = this.organizationReader;
                         InetAddress address = packet.getAddress();

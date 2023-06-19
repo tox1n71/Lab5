@@ -4,6 +4,10 @@ import java.io.Serializable;
 
 public class Organization implements Comparable<Organization>, Serializable {
 
+    public void setId(int id) {
+        this.id = id;
+    }
+
     private int id;
 
     public int getId() {

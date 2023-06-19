@@ -9,6 +9,7 @@ public class AddCommand  implements Command {
     private Worker worker;
     private String name = "add";
     CollectionManager collectionManager;
+
     public AddCommand(Worker worker) {
         this.worker = worker;
 

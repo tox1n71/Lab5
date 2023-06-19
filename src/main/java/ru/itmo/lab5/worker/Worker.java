@@ -158,6 +158,7 @@ public class Worker implements Comparable<Worker>, Serializable {
     public String toString() {
         if (getEndDate() == null){
             return "Worker{" +
+                    "\n\t owner=" + user.getName() +
                     "\n\t id=" + id +
                     ",\n\t name=" + name  +
                     ",\n\t coordinates=" + coordinates +

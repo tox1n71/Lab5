@@ -1,6 +1,7 @@
 package ru.itmo.lab5.commands;
 
 import ru.itmo.lab5.server.CollectionManager;
+import ru.itmo.lab5.utils.User;
 import ru.itmo.lab5.worker.Worker;
 
 public class RemoveLowerCommand implements Command {
@@ -8,10 +9,11 @@ public class RemoveLowerCommand implements Command {
 
     private Worker worker;
     private String name = "remove_lower";
+    private User user;
     CollectionManager collectionManager;
-    public RemoveLowerCommand(Worker worker) {
+    public RemoveLowerCommand(Worker worker, User user) {
         this.worker = worker;
-
+        this.user = user;
     }
 
     public Worker getWorker() {
@@ -23,7 +25,7 @@ public class RemoveLowerCommand implements Command {
     }
 
     public String execute(){
-        collectionManager.removeLower(worker);
+        collectionManager.removeLower(worker, user);
         return ("Введенный элемент добавлен в коллекцию с id" + worker.getId());
     }
 

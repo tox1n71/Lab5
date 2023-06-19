@@ -8,6 +8,7 @@ import ru.itmo.lab5.exceptions.UniqueException;
 import ru.itmo.lab5.exceptions.WrongScriptDataException;
 import ru.itmo.lab5.readers.OrganizationReader;
 import ru.itmo.lab5.utils.DataProvider;
+import ru.itmo.lab5.utils.User;
 import ru.itmo.lab5.worker.*;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -15,11 +16,15 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import static ru.itmo.lab5.readers.WorkerReader.formatter;
@@ -36,7 +41,8 @@ public class CollectionManager {
     Stack<String> commandHistory = new Stack<>();
     OrganizationReader organizationReader = new OrganizationReader();
     HashSet<String> commands = new HashSet<>();
-    DataProvider dataProvider = new DataProvider();
+    DataProvider dataProvider;
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
 
     {
@@ -55,6 +61,8 @@ public class CollectionManager {
         commands.add("update_by_id");
         commands.add("exit");
         commands.add("execute_script");
+        commands.add("register");
+        commands.add("login");
     }
 
 
@@ -64,9 +72,9 @@ public class CollectionManager {
         zonedDateTime = ZonedDateTime.now();
     }
 
-    public CollectionManager(File fileName, TreeSet<Worker> workers) throws ParserConfigurationException, IOException, SAXException {
-        this.fileName = fileName;
+    public CollectionManager(TreeSet<Worker> workers, DataProvider dataProvider) throws ParserConfigurationException, IOException, SAXException {
         this.workers = workers;
+        this.dataProvider = dataProvider;
     }
 
     public CollectionManager() {
@@ -125,21 +133,31 @@ public class CollectionManager {
         worker.setId(getFreeId());
         worker.setCreationDate(LocalDate.now());
         organizationReader.organizationsFullNames.add(worker.getOrganization().getFullName());
-        if (workers.add(worker)) {
-            return ("Введенный элемент добавлен в коллекцию с id: " + worker.getId());
-        } else {
-            return "Работник не уникален и не был добавлен в коллекцию";
+        lock.writeLock().lock();
+        try {
+            if (workers.add(worker)) {
+                return ("Введенный элемент добавлен в коллекцию с id: " + worker.getId());
+            } else {
+                return "Работник не уникален и не был добавлен в коллекцию";
+            }
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
-    public String clear() {
-        workers.stream().map(Worker::getId).forEach(workersIds::remove);
-        workers.clear();
-        return "Коллекция очищена";
+    public String clear(User user) {
+        lock.writeLock().lock();
+        try {
+            workers.removeIf(worker -> worker.getUser().getName().equals(user.getName()));
+            workers.stream().map(Worker::getId).forEach(workersIds::remove);
+        } finally {
+            lock.writeLock().unlock();
+        }
+        return "Ваши объекты удалены из коллекции";
     }
 
 
-    public String removeById(int id) {
+    public String removeById(int id, User user) {
         boolean found = false;
         String res = "";
         if (workers.isEmpty()) {
@@ -149,12 +167,22 @@ public class CollectionManager {
             while (iterator.hasNext()) {
                 Worker worker = iterator.next();
                 if (worker.getId() == id) {
-                    iterator.remove();
-                    workersIds.remove(worker.getId());
-                    organizationReader.removeOrgNameFromList(worker.getOrganization().getFullName());
-                    res = "Элемент с id " + id + " удален из коллекции";
-                    found = true;
-                    break;
+                    if (worker.getUser().getName().equals(user.getName())) {
+                        lock.writeLock().lock();
+                        try {
+                            iterator.remove();
+                            workersIds.remove(worker.getId());
+                            organizationReader.removeOrgNameFromList(worker.getOrganization().getFullName());
+                        } finally {
+                            lock.writeLock().unlock();
+                        }
+                        res = "Элемент с id " + id + " удален из коллекции";
+                        found = true;
+                        break;
+                    } else {
+                        res = "Данный worker не принадлежит вам";
+                    }
+
                 }
             }
             if (!found) {
@@ -178,30 +206,44 @@ public class CollectionManager {
         if (inputOrganization.getAnnualTurnover() == null) {
             return "Сравнить с null значением не получится";
         }
+        lock.readLock().lock();
+        try {
+            List<Worker> filteredWorkers = workers.stream()
+                    .filter(worker -> worker.getOrganization().getAnnualTurnover() != null)
+                    .filter(worker -> worker.getOrganization().compareTo(inputOrganization) < 0)
+                    .toList();
 
-        List<Worker> filteredWorkers = workers.stream()
-                .filter(worker -> worker.getOrganization().getAnnualTurnover() != null)
-                .filter(worker -> worker.getOrganization().compareTo(inputOrganization) < 0)
-                .toList();
         if (filteredWorkers.isEmpty()) {
             return "Работников с меньшей организацией нет";
         } else {
             return filteredWorkers.stream().map(Object::toString).collect(Collectors.joining());
+        }}finally {
+            lock.readLock().unlock();
         }
     }
 
 
     public String minByName() {
-        Optional<Worker> minWorker = workers.stream()
-                .min(Comparator.comparing(Worker::getName));
-        return minWorker.map(worker -> "Работник с минимальным именем: \n" + worker).orElse("Не удалось найти работника с минимальным именем.");
+        lock.readLock().unlock();
+        try {
+            Optional<Worker> minWorker = workers.stream()
+                    .min(Comparator.comparing(Worker::getName));
+
+        return minWorker.map(worker -> "Работник с минимальным именем: \n" + worker).orElse("Не удалось найти работника с минимальным именем.");}finally {
+            lock.readLock().unlock();
+        }
     }
 
 
     public String printDescending() {
-        return workers.descendingSet().stream()
-                .map(Worker::toString)
-                .collect(Collectors.joining("\n"));
+        lock.readLock().lock();
+        try {
+            return workers.descendingSet().stream()
+                    .map(Worker::toString)
+                    .collect(Collectors.joining("\n"));
+        }finally {
+            lock.readLock().unlock();
+        }
     }
 
     public String history() {
@@ -215,7 +257,8 @@ public class CollectionManager {
     }
 
     public String addIfMin(Worker mayBeAddedWorker) {
-        if (workers.isEmpty()) {
+        lock.writeLock().lock();
+        try {if (workers.isEmpty()) {
             return ("Коллекция пуста, воспользуйтесь командой 'add'");
         }
         Optional<Worker> minWorker = workers.stream()
@@ -228,17 +271,22 @@ public class CollectionManager {
         workers.add(mayBeAddedWorker);
         organizationReader.organizationsFullNames.add(mayBeAddedWorker.getOrganization().getFullName());
         return ("Введенный элемент меньше и добавлен в коллекцию с id " + mayBeAddedWorker.getId());
+    }finally {
+            lock.writeLock().unlock();
+        }
     }
 
 
-    public String removeLower(Worker removeLowerThanThisWorker) {
-        List<Worker> removedWorkers = workers.stream()
-                .filter(worker -> worker.compareTo(removeLowerThanThisWorker) < 0)
-                .peek(worker -> {
-                    organizationReader.organizationsFullNames.remove(worker.getOrganization().getFullName());
-                    workersIds.remove(worker.getId());
-                })
-                .collect(Collectors.toList());
+    public String removeLower(Worker removeLowerThanThisWorker, User user) {
+        lock.writeLock().lock();
+        try {List<Worker> removedWorkers = new ArrayList<>();
+        for (Worker worker : workers) {
+            if (worker.compareTo(removeLowerThanThisWorker) < 0 && worker.getUser().getName().equals(user.getName())) {
+                organizationReader.organizationsFullNames.remove(worker.getOrganization().getFullName());
+                workersIds.remove(worker.getId());
+                removedWorkers.add(worker);
+            }
+        }
 
         if (removedWorkers.isEmpty()) {
             return "Элементы меньше чем заданный не найдены";
@@ -247,6 +295,8 @@ public class CollectionManager {
             return removedWorkers.stream()
                     .map(worker -> "Удален элемент с id " + worker.getId())
                     .collect(Collectors.joining("\n"));
+        }}finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -278,23 +328,38 @@ public class CollectionManager {
     }
 
     public String save() throws IOException {
-        try (FileWriter writer = new FileWriter(fileName, false)) {
-            writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n");
-            writer.write("<Workers>\n");
-
-            workers.stream()
-                    .map(Worker::toXml)
-                    .forEach(xml -> {
-                        try {
-                            writer.write(xml);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-
-            writer.write("</Workers>");
-            return ("Сохранение коллекции завершено");
+//        try (FileWriter writer = new FileWriter(fileName, false)) {
+//            writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n");
+//            writer.write("<Workers>\n");
+//
+//            workers.stream()
+//                    .map(Worker::toXml)
+//                    .forEach(xml -> {
+//                        try {
+//                            writer.write(xml);
+//                        } catch (IOException e) {
+//                            throw new RuntimeException(e);
+//                        }
+//                    });
+//
+//            writer.write("</Workers>");
+//            return ("Сохранение коллекции завершено");
+        try {
+            dataProvider.saveWorkers(workers);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e);
+        } catch (InstantiationException e) {
+            throw new RuntimeException(e);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e);
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
+        return ("Сохранение коллекции завершено");
     }
 
 
@@ -561,8 +626,13 @@ public class CollectionManager {
         return workers;
     }
 
+    public String registerUser(User user) {
+        return dataProvider.registerUser(user);
+    }
 
-
+    public String loginUser(User user) {
+        return dataProvider.checkUser(user);
+    }
 
 }
 
